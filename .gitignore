@@ -1,2 +1,25 @@
 software-design-doc
 *.pptx
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite
+.pytest_cache/
+
+# Backend
+backend/*.db
+backend/*.sqlite
+backend/.pytest_cache/
+
+# Node / Frontend
+node_modules
+node_modules/
+/node_modules/
+frontend/node_modules
+frontend/node_modules/
+frontend/.next
+frontend/.next/
+frontend/out/
