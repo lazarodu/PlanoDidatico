@@ -1,0 +1,63 @@
+# ==============================================================================
+# Docker Compose - ambiente de desenvolvimento (CEFET-MG Planos Didáticos)
+#
+# INSTRUÇÕES DE USO (COMO SUBIR A API E O BANCO DE DADOS COM DOCKER):
+#
+# 1. Para iniciar os serviços (PostgreSQL + API FastAPI):
+#    $ docker-compose up -d --build
+#
+# 2. Para visualizar os logs em tempo real da API:
+#    $ docker-compose logs -f api
+#
+# 3. Para acessar a documentação interativa OpenAPI/Swagger:
+#    Navegue para http://localhost:8000/docs
+#
+# 4. Para encerrar e remover os containers:
+#    $ docker-compose down
+#
+# 5. Para resetar totalmente o banco de dados (deletar dados persistidos no volume):
+#    $ docker-compose down -v
+# ==============================================================================
+
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: planos_didaticos_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: planos_didaticos
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d planos_didaticos"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: planos_didaticos_api
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/planos_didaticos
+      SMTP_HOST: localhost
+      SMTP_PORT: 587
+      TELEGRAM_BOT_TOKEN: dummy_token
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
