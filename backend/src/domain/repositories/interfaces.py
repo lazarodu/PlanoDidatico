@@ -9,111 +9,111 @@ from src.domain.value_objects.field_config import CampoFormulario
 
 class IUsuarioRepository(ABC):
     @abstractmethod
-    def save(self, usuario: Usuario) -> Usuario: pass
+    async def save(self, usuario: Usuario) -> Usuario: pass
 
     @abstractmethod
-    def find_by_id(self, usuario_id: int) -> Optional[Usuario]: pass
+    async def find_by_id(self, usuario_id: int) -> Optional[Usuario]: pass
 
     @abstractmethod
-    def find_by_email(self, email: str) -> Optional[Usuario]: pass
+    async def find_by_email(self, email: str) -> Optional[Usuario]: pass
 
     @abstractmethod
-    def list_all() -> List[Usuario]: pass
+    async def list_all(self) -> List[Usuario]: pass
 
     @abstractmethod
-    def save_professor(self, professor: Professor) -> Professor: pass
+    async def save_professor(self, professor: Professor) -> Professor: pass
 
     @abstractmethod
-    def find_professor_by_id(self, usuario_id: int) -> Optional[Professor]: pass
+    async def find_professor_by_id(self, usuario_id: int) -> Optional[Professor]: pass
 
 
 class IDidacticPlanRepository(ABC):
     @abstractmethod
-    def save(self, plan: DidacticPlan) -> DidacticPlan: pass
+    async def save(self, plan: DidacticPlan) -> DidacticPlan: pass
 
     @abstractmethod
-    def find_by_id(self, plan_id: int) -> Optional[DidacticPlan]: pass
+    async def find_by_id(self, plan_id: int) -> Optional[DidacticPlan]: pass
 
     @abstractmethod
-    def find_by_professor_disciplina_periodo(self, professor_id: int, disciplina_id: int, periodo_letivo_id: int) -> Optional[DidacticPlan]: pass
+    async def find_by_professor_disciplina_periodo(self, professor_id: int, disciplina_id: int, periodo_letivo_id: int) -> Optional[DidacticPlan]: pass
 
     @abstractmethod
-    def list_by_professor(self, professor_id: int) -> List[DidacticPlan]: pass
+    async def list_by_professor(self, professor_id: int) -> List[DidacticPlan]: pass
 
     @abstractmethod
-    def list_by_periodo(self, periodo_letivo_id: int) -> List[DidacticPlan]: pass
+    async def list_by_periodo(self, periodo_letivo_id: int) -> List[DidacticPlan]: pass
 
     @abstractmethod
-    def list_all() -> List[DidacticPlan]: pass
+    async def list_all(self) -> List[DidacticPlan]: pass
 
     @abstractmethod
-    def save_campo_formulario(self, campo: CampoFormulario) -> CampoFormulario: pass
+    async def save_campo_formulario(self, campo: CampoFormulario) -> CampoFormulario: pass
 
     @abstractmethod
-    def list_campos_formulario() -> List[CampoFormulario]: pass
+    async def list_campos_formulario(self) -> List[CampoFormulario]: pass
 
     @abstractmethod
-    def delete_campo_formulario(self, campo_id: int) -> bool: pass
+    async def delete_campo_formulario(self, campo_id: int) -> bool: pass
 
 
 class IAtribuicaoRepository(ABC):
     @abstractmethod
-    def save_disciplina(self, disciplina: Disciplina) -> Disciplina: pass
+    async def save_disciplina(self, disciplina: Disciplina) -> Disciplina: pass
 
     @abstractmethod
-    def find_disciplina_by_id(self, disciplina_id: int) -> Optional[Disciplina]: pass
+    async def find_disciplina_by_id(self, disciplina_id: int) -> Optional[Disciplina]: pass
 
     @abstractmethod
-    def list_disciplinas() -> List[Disciplina]: pass
+    async def list_disciplinas(self) -> List[Disciplina]: pass
 
     @abstractmethod
-    def save_atribuicao(self, atribuicao: AtribuicaoProfessorDisciplina) -> AtribuicaoProfessorDisciplina: pass
+    async def save_atribuicao(self, atribuicao: AtribuicaoProfessorDisciplina) -> AtribuicaoProfessorDisciplina: pass
 
     @abstractmethod
-    def find_atribuicao_by_id(self, atribuicao_id: int) -> Optional[AtribuicaoProfessorDisciplina]: pass
+    async def find_atribuicao_by_id(self, atribuicao_id: int) -> Optional[AtribuicaoProfessorDisciplina]: pass
 
     @abstractmethod
-    def list_atribuicoes_by_periodo(self, periodo_letivo_id: int) -> List[AtribuicaoProfessorDisciplina]: pass
+    async def list_atribuicoes_by_periodo(self, periodo_letivo_id: int) -> List[AtribuicaoProfessorDisciplina]: pass
 
     @abstractmethod
-    def list_atribuicoes_by_professor(self, professor_id: int) -> List[AtribuicaoProfessorDisciplina]: pass
+    async def list_atribuicoes_by_professor(self, professor_id: int) -> List[AtribuicaoProfessorDisciplina]: pass
 
     @abstractmethod
-    def save_dia_letivo(self, dia: DiaLetivoDisciplina) -> DiaLetivoDisciplina: pass
+    async def save_dia_letivo(self, dia: DiaLetivoDisciplina) -> DiaLetivoDisciplina: pass
 
     @abstractmethod
-    def delete_dia_letivo(self, dia_id: int) -> bool: pass
+    async def delete_dia_letivo(self, dia_id: int) -> bool: pass
 
 
 class IPeriodoLetivoRepository(ABC):
     @abstractmethod
-    def save(self, periodo: PeriodoLetivo) -> PeriodoLetivo: pass
+    async def save(self, periodo: PeriodoLetivo) -> PeriodoLetivo: pass
 
     @abstractmethod
-    def find_by_id(self, periodo_id: int) -> Optional[PeriodoLetivo]: pass
+    async def find_by_id(self, periodo_id: int) -> Optional[PeriodoLetivo]: pass
 
     @abstractmethod
-    def get_ativo() -> Optional[PeriodoLetivo]: pass
+    async def get_ativo(self) -> Optional[PeriodoLetivo]: pass
 
     @abstractmethod
-    def set_ativo(self, periodo_id: int) -> None: pass
+    async def set_ativo(self, periodo_id: int) -> None: pass
 
     @abstractmethod
-    def list_all() -> List[PeriodoLetivo]: pass
+    async def list_all(self) -> List[PeriodoLetivo]: pass
 
 
 class INotificationRepository(ABC):
     @abstractmethod
-    def save_preference(self, pref: NotificationPreference) -> NotificationPreference: pass
+    async def save_preference(self, pref: NotificationPreference) -> NotificationPreference: pass
 
     @abstractmethod
-    def find_preference_by_usuario_id(self, usuario_id: int) -> Optional[NotificationPreference]: pass
+    async def find_preference_by_usuario_id(self, usuario_id: int) -> Optional[NotificationPreference]: pass
 
     @abstractmethod
-    def save_log(self, log: NotificationLog) -> NotificationLog: pass
+    async def save_log(self, log: NotificationLog) -> NotificationLog: pass
 
     @abstractmethod
-    def list_logs_by_usuario(self, usuario_id: int) -> List[NotificationLog]: pass
+    async def list_logs_by_usuario(self, usuario_id: int) -> List[NotificationLog]: pass
 
 
 class INotifier(ABC):

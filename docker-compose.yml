@@ -47,7 +47,7 @@ services:
     container_name: planos_didaticos_api
     restart: always
     environment:
-      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/planos_didaticos
+      DATABASE_URL: postgresql+asyncpg://postgres:postgrespassword@db:5432/planos_didaticos
       SMTP_HOST: localhost
       SMTP_PORT: 587
       TELEGRAM_BOT_TOKEN: dummy_token

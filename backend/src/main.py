@@ -2,17 +2,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 import src.adapters.repositories.models  # Register models with Base
-from src.infra.database import Base, engine
+from src.infra.database import Base, engine, AsyncSessionLocal
 from src.adapters.controllers.api_router import router
-
-# Create DB tables at import time so engine/Base tables exist immediately
-Base.metadata.create_all(bind=engine)
 
 scheduler = AsyncIOScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from src.infra.database import SessionLocal
+    # Create DB tables on startup
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     from src.adapters.repositories.sqlalchemy_repositories import (
         SQLAlchemyPeriodoLetivoRepository,
         SQLAlchemyAtribuicaoRepository,
@@ -24,20 +24,20 @@ async def lifespan(app: FastAPI):
     from src.application.use_cases.notification_use_cases import DetectarNotificarAtrasosUseCase
 
     async def daily_delay_check():
-        db = SessionLocal()
-        try:
-            uc = DetectarNotificarAtrasosUseCase(
-                SQLAlchemyPeriodoLetivoRepository(db),
-                SQLAlchemyAtribuicaoRepository(db),
-                SQLAlchemyDidacticPlanRepository(db),
-                SQLAlchemyUserRepository(db),
-                SQLAlchemyNotificationRepository(db),
-                EmailSmtpNotifier(),
-                TelegramNotifier()
-            )
-            await uc.execute()
-        finally:
-            db.close()
+        async with AsyncSessionLocal() as db:
+            try:
+                uc = DetectarNotificarAtrasosUseCase(
+                    SQLAlchemyPeriodoLetivoRepository(db),
+                    SQLAlchemyAtribuicaoRepository(db),
+                    SQLAlchemyDidacticPlanRepository(db),
+                    SQLAlchemyUserRepository(db),
+                    SQLAlchemyNotificationRepository(db),
+                    EmailSmtpNotifier(),
+                    TelegramNotifier()
+                )
+                await uc.execute()
+            finally:
+                pass  # session closes via async context manager
 
     scheduler.add_job(daily_delay_check, 'cron', hour=8, minute=0)
     scheduler.start()

@@ -1,5 +1,6 @@
 from typing import Optional, List
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, update
 from src.domain.entities.user import Usuario, Professor
 from src.domain.entities.didactic_plan import DidacticPlan
 from src.domain.entities.atribuicao import Disciplina, PeriodoLetivo, AtribuicaoProfessorDisciplina, DiaLetivoDisciplina
@@ -27,12 +28,15 @@ from src.adapters.repositories.models import (
 
 
 class SQLAlchemyUserRepository(IUsuarioRepository):
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    def save(self, usuario: Usuario) -> Usuario:
+    async def save(self, usuario: Usuario) -> Usuario:
         if usuario.id:
-            model = self.session.query(UsuarioModel).filter(UsuarioModel.id == usuario.id).first()
+            result = await self.session.execute(
+                select(UsuarioModel).filter(UsuarioModel.id == usuario.id)
+            )
+            model = result.scalar_one_or_none()
             if model:
                 model.nome = usuario.nome
                 model.email = usuario.email
@@ -41,59 +45,76 @@ class SQLAlchemyUserRepository(IUsuarioRepository):
             model = UsuarioModel(nome=usuario.nome, email=usuario.email, tipo=usuario.tipo)
             self.session.add(model)
 
-        self.session.commit()
-        self.session.refresh(model)
+        await self.session.commit()
+        await self.session.refresh(model)
         usuario.id = model.id
         return usuario
 
-    def find_by_id(self, usuario_id: int) -> Optional[Usuario]:
-        m = self.session.query(UsuarioModel).filter(UsuarioModel.id == usuario_id).first()
+    async def find_by_id(self, usuario_id: int) -> Optional[Usuario]:
+        result = await self.session.execute(
+            select(UsuarioModel).filter(UsuarioModel.id == usuario_id)
+        )
+        m = result.scalar_one_or_none()
         if m:
             return Usuario(id=m.id, nome=m.nome, email=m.email, tipo=m.tipo)
         return None
 
-    def find_by_email(self, email: str) -> Optional[Usuario]:
-        m = self.session.query(UsuarioModel).filter(UsuarioModel.email == email).first()
+    async def find_by_email(self, email: str) -> Optional[Usuario]:
+        result = await self.session.execute(
+            select(UsuarioModel).filter(UsuarioModel.email == email)
+        )
+        m = result.scalar_one_or_none()
         if m:
             return Usuario(id=m.id, nome=m.nome, email=m.email, tipo=m.tipo)
         return None
 
-    def list_all(self) -> List[Usuario]:
-        models = self.session.query(UsuarioModel).all()
+    async def list_all(self) -> List[Usuario]:
+        result = await self.session.execute(select(UsuarioModel).order_by(UsuarioModel.id))
+        models = result.scalars().all()
         return [Usuario(id=m.id, nome=m.nome, email=m.email, tipo=m.tipo) for m in models]
 
-    def save_professor(self, professor: Professor) -> Professor:
-        m = self.session.query(ProfessorModel).filter(ProfessorModel.usuario_id == professor.usuario_id).first()
-        if m:
-            m.matricula = professor.matricula
-            m.departamento = professor.departamento
+    async def save_professor(self, professor: Professor) -> Professor:
+        m = await self.session.execute(
+            select(ProfessorModel).filter(ProfessorModel.usuario_id == professor.usuario_id)
+        )
+        model = m.scalar_one_or_none()
+        if model:
+            model.matricula = professor.matricula
+            model.departamento = professor.departamento
         else:
-            m = ProfessorModel(usuario_id=professor.usuario_id, matricula=professor.matricula, departamento=professor.departamento)
-            self.session.add(m)
-        self.session.commit()
+            model = ProfessorModel(usuario_id=professor.usuario_id, matricula=professor.matricula, departamento=professor.departamento)
+            self.session.add(model)
+
+        await self.session.commit()
         return professor
 
-    def find_professor_by_id(self, usuario_id: int) -> Optional[Professor]:
-        m = self.session.query(ProfessorModel).filter(ProfessorModel.usuario_id == usuario_id).first()
+    async def find_professor_by_id(self, usuario_id: int) -> Optional[Professor]:
+        result = await self.session.execute(
+            select(ProfessorModel).filter(ProfessorModel.usuario_id == usuario_id)
+        )
+        m = result.scalar_one_or_none()
         if m:
             return Professor(usuario_id=m.usuario_id, matricula=m.matricula, departamento=m.departamento)
         return None
 
 
 class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    def save(self, plan: DidacticPlan) -> DidacticPlan:
+    async def save(self, plan: DidacticPlan) -> DidacticPlan:
         if plan.id:
-            m = self.session.query(DidacticPlanModel).filter(DidacticPlanModel.id == plan.id).first()
-            if m:
-                m.professor_id = plan.professor_id
-                m.disciplina_id = plan.disciplina_id
-                m.periodo_letivo_id = plan.periodo_letivo_id
-                m.status = plan.status
-                m.data_entrega = plan.data_entrega
-                m.campos = plan.campos
+            result = await self.session.execute(
+                select(DidacticPlanModel).filter(DidacticPlanModel.id == plan.id)
+            )
+            model = result.scalar_one_or_none()
+            if model:
+                model.professor_id = plan.professor_id
+                model.disciplina_id = plan.disciplina_id
+                model.periodo_letivo_id = plan.periodo_letivo_id
+                model.status = plan.status
+                model.data_entrega = plan.data_entrega
+                model.campos = plan.campos
         else:
             m = DidacticPlanModel(
                 professor_id=plan.professor_id,
@@ -104,13 +125,17 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
                 campos=plan.campos
             )
             self.session.add(m)
-        self.session.commit()
-        self.session.refresh(m)
-        plan.id = m.id
+
+        await self.session.commit()
+        await self.session.refresh(model)
+        plan.id = model.id
         return plan
 
-    def find_by_id(self, plan_id: int) -> Optional[DidacticPlan]:
-        m = self.session.query(DidacticPlanModel).filter(DidacticPlanModel.id == plan_id).first()
+    async def find_by_id(self, plan_id: int) -> Optional[DidacticPlan]:
+        result = await self.session.execute(
+            select(DidacticPlanModel).filter(DidacticPlanModel.id == plan_id)
+        )
+        m = result.scalar_one_or_none()
         if m:
             return DidacticPlan(
                 id=m.id, professor_id=m.professor_id, disciplina_id=m.disciplina_id,
@@ -119,12 +144,15 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
             )
         return None
 
-    def find_by_professor_disciplina_periodo(self, professor_id: int, disciplina_id: int, periodo_letivo_id: int) -> Optional[DidacticPlan]:
-        m = self.session.query(DidacticPlanModel).filter(
-            DidacticPlanModel.professor_id == professor_id,
-            DidacticPlanModel.disciplina_id == disciplina_id,
-            DidacticPlanModel.periodo_letivo_id == periodo_letivo_id
-        ).first()
+    async def find_by_professor_disciplina_periodo(self, professor_id: int, disciplina_id: int, periodo_letivo_id: int) -> Optional[DidacticPlan]:
+        result = await self.session.execute(
+            select(DidacticPlanModel).filter(
+                DidacticPlanModel.professor_id == professor_id,
+                DidacticPlanModel.disciplina_id == disciplina_id,
+                DidacticPlanModel.periodo_letivo_id == periodo_letivo_id
+            )
+        )
+        m = result.scalar_one_or_none()
         if m:
             return DidacticPlan(
                 id=m.id, professor_id=m.professor_id, disciplina_id=m.disciplina_id,
@@ -133,8 +161,11 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
             )
         return None
 
-    def list_by_professor(self, professor_id: int) -> List[DidacticPlan]:
-        models = self.session.query(DidacticPlanModel).filter(DidacticPlanModel.professor_id == professor_id).all()
+    async def list_by_professor(self, professor_id: int) -> List[DidacticPlan]:
+        result = await self.session.execute(
+            select(DidacticPlanModel).filter(DidacticPlanModel.professor_id == professor_id).order_by(DidacticPlanModel.id)
+        )
+        models = result.scalars().all()
         return [
             DidacticPlan(
                 id=m.id, professor_id=m.professor_id, disciplina_id=m.disciplina_id,
@@ -143,8 +174,11 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
             ) for m in models
         ]
 
-    def list_by_periodo(self, periodo_letivo_id: int) -> List[DidacticPlan]:
-        models = self.session.query(DidacticPlanModel).filter(DidacticPlanModel.periodo_letivo_id == periodo_letivo_id).all()
+    async def list_by_periodo(self, periodo_letivo_id: int) -> List[DidacticPlan]:
+        result = await self.session.execute(
+            select(DidacticPlanModel).filter(DidacticPlanModel.periodo_letivo_id == periodo_letivo_id).order_by(DidacticPlanModel.id)
+        )
+        models = result.scalars().all()
         return [
             DidacticPlan(
                 id=m.id, professor_id=m.professor_id, disciplina_id=m.disciplina_id,
@@ -153,8 +187,9 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
             ) for m in models
         ]
 
-    def list_all(self) -> List[DidacticPlan]:
-        models = self.session.query(DidacticPlanModel).all()
+    async def list_all(self) -> List[DidacticPlan]:
+        result = await self.session.execute(select(DidacticPlanModel).order_by(DidacticPlanModel.id))
+        models = result.scalars().all()
         return [
             DidacticPlan(
                 id=m.id, professor_id=m.professor_id, disciplina_id=m.disciplina_id,
@@ -163,30 +198,35 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
             ) for m in models
         ]
 
-    def save_campo_formulario(self, campo: CampoFormulario) -> CampoFormulario:
+    async def save_campo_formulario(self, campo: CampoFormulario) -> CampoFormulario:
         if campo.id:
-            m = self.session.query(CampoFormularioModel).filter(CampoFormularioModel.id == campo.id).first()
-            if m:
-                m.nome = campo.nome
-                m.tipo = campo.tipo
-                m.obrigatorio = campo.obrigatorio
-                m.ordem = campo.ordem
-                m.opcoes = campo.opcoes
+            result = await self.session.execute(
+                select(CampoFormularioModel).filter(CampoFormularioModel.id == campo.id)
+            )
+            model = result.scalar_one_or_none()
+            if model:
+                model.nome = campo.nome
+                model.tipo = campo.tipo
+                model.obrigatorio = campo.obrigatorio
+                model.ordem = campo.ordem
+                model.opcoes = campo.opcoes
         else:
-            m = CampoFormularioModel(
+            model = CampoFormularioModel(
                 nome=campo.nome, tipo=campo.tipo, obrigatorio=campo.obrigatorio,
                 ordem=campo.ordem, opcoes=campo.opcoes
             )
-            self.session.add(m)
-        self.session.commit()
-        self.session.refresh(m)
+            self.session.add(model)
+
+        await self.session.commit()
+        await self.session.refresh(model)
         return CampoFormulario(
-            id=m.id, nome=m.nome, tipo=m.tipo, obrigatorio=m.obrigatorio,
-            ordem=m.ordem, opcoes=m.opcoes
+            id=model.id, nome=model.nome, tipo=model.tipo, obrigatorio=model.obrigatorio,
+            ordem=model.ordem, opcoes=model.opcoes
         )
 
-    def list_campos_formulario(self) -> List[CampoFormulario]:
-        models = self.session.query(CampoFormularioModel).order_by(CampoFormularioModel.ordem).all()
+    async def list_campos_formulario(self) -> List[CampoFormulario]:
+        result = await self.session.execute(select(CampoFormularioModel).order_by(CampoFormularioModel.ordem))
+        models = result.scalars().all()
         return [
             CampoFormulario(
                 id=m.id, nome=m.nome, tipo=m.tipo, obrigatorio=m.obrigatorio,
@@ -194,42 +234,50 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
             ) for m in models
         ]
 
-    def delete_campo_formulario(self, campo_id: int) -> bool:
-        m = self.session.query(CampoFormularioModel).filter(CampoFormularioModel.id == campo_id).first()
-        if m:
-            self.session.delete(m)
-            self.session.commit()
+    async def delete_campo_formulario(self, campo_id: int) -> bool:
+        result = await self.session.execute(
+            select(CampoFormularioModel).filter(CampoFormularioModel.id == campo_id)
+        )
+        model = result.scalar_one_or_none()
+        if model:
+            await self.session.delete(model)
+            await self.session.commit()
             return True
         return False
 
 
 class SQLAlchemyAtribuicaoRepository(IAtribuicaoRepository):
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    def save_disciplina(self, disciplina: Disciplina) -> Disciplina:
-        if disciplina.id:
-            m = self.session.query(DisciplinaModel).filter(DisciplinaModel.id == disciplina.id).first()
-            if m:
-                m.codigo = disciplina.codigo
-                m.nome = disciplina.nome
-                m.carga_horaria = disciplina.carga_horaria
-                m.natureza = disciplina.natureza
-                m.area_formacao = disciplina.area_formacao
-                m.departamento = disciplina.departamento
+    async def save_disciplina(self, disciplina: Disciplina) -> Disciplina:
+        result = await self.session.execute(
+            select(DisciplinaModel).filter(DisciplinaModel.id == disciplina.id)
+        )
+        model = result.scalar_one_or_none()
+        if model:
+            model.codigo = disciplina.codigo
+            model.nome = disciplina.nome
+            model.carga_horaria = disciplina.carga_horaria
+            model.natureza = disciplina.natureza
+            model.area_formacao = disciplina.area_formacao
+            model.departamento = disciplina.departamento
         else:
-            m = DisciplinaModel(
+            model = DisciplinaModel(
                 codigo=disciplina.codigo, nome=disciplina.nome, carga_horaria=disciplina.carga_horaria,
                 natureza=disciplina.natureza, area_formacao=disciplina.area_formacao, departamento=disciplina.departamento
             )
-            self.session.add(m)
-        self.session.commit()
-        self.session.refresh(m)
-        disciplina.id = m.id
+            self.session.add(model)
+
+        await self.session.commit()
+        disciplina.id = model.id
         return disciplina
 
-    def find_disciplina_by_id(self, disciplina_id: int) -> Optional[Disciplina]:
-        m = self.session.query(DisciplinaModel).filter(DisciplinaModel.id == disciplina_id).first()
+    async def find_disciplina_by_id(self, disciplina_id: int) -> Optional[Disciplina]:
+        result = await self.session.execute(
+            select(DisciplinaModel).filter(DisciplinaModel.id == disciplina_id)
+        )
+        m = result.scalar_one_or_none()
         if m:
             return Disciplina(
                 id=m.id, codigo=m.codigo, nome=m.nome, carga_horaria=m.carga_horaria,
@@ -237,8 +285,9 @@ class SQLAlchemyAtribuicaoRepository(IAtribuicaoRepository):
             )
         return None
 
-    def list_disciplinas(self) -> List[Disciplina]:
-        models = self.session.query(DisciplinaModel).all()
+    async def list_disciplinas(self) -> List[Disciplina]:
+        result = await self.session.execute(select(DisciplinaModel).order_by(DisciplinaModel.id))
+        models = result.scalars().all()
         return [
             Disciplina(
                 id=m.id, codigo=m.codigo, nome=m.nome, carga_horaria=m.carga_horaria,
@@ -246,40 +295,57 @@ class SQLAlchemyAtribuicaoRepository(IAtribuicaoRepository):
             ) for m in models
         ]
 
-    def save_atribuicao(self, atribuicao: AtribuicaoProfessorDisciplina) -> AtribuicaoProfessorDisciplina:
-        if atribuicao.id:
-            m = self.session.query(AtribuicaoModel).filter(AtribuicaoModel.id == atribuicao.id).first()
-            if m:
-                m.professor_id = atribuicao.professor_id
-                m.disciplina_id = atribuicao.disciplina_id
-                m.periodo_letivo_id = atribuicao.periodo_letivo_id
-                m.horario = atribuicao.horario
+    async def save_atribuicao(self, atribuicao: AtribuicaoProfessorDisciplina) -> AtribuicaoProfessorDisciplina:
+        result = await self.session.execute(
+            select(AtribuicaoModel).filter(AtribuicaoModel.id == atribuicao.id)
+        )
+        model = result.scalar_one_or_none()
+        if model:
+            model.professor_id = atribuicao.professor_id
+            model.disciplina_id = atribuicao.disciplina_id
+            model.periodo_letivo_id = atribuicao.periodo_letivo_id
+            model.horario = atribuicao.horario
         else:
-            m = AtribuicaoModel(
+            model = AtribuicaoModel(
                 professor_id=atribuicao.professor_id,
                 disciplina_id=atribuicao.disciplina_id,
                 periodo_letivo_id=atribuicao.periodo_letivo_id,
                 horario=atribuicao.horario
             )
-            self.session.add(m)
-            self.session.commit()
-            self.session.refresh(m)
-            atribuicao.id = m.id
+            self.session.add(model)
 
-        self.session.query(DiaLetivoModel).filter(DiaLetivoModel.atribuicao_id == atribuicao.id).delete()
+        await self.session.commit()
+        await self.session.refresh(model)
+        atribuicao.id = model.id
+
+        # Delete existing dias_letivos and create new ones
+        result = await self.session.execute(
+            select(DiaLetivoModel).filter(DiaLetivoModel.atribuicao_id == atribuicao.id)
+        )
+        existing = result.scalars().all()
+        for d in existing:
+            await self.session.delete(d)
+
         for d in atribuicao.dias_letivos:
             d_model = DiaLetivoModel(atribuicao_id=atribuicao.id, data=d.data, turno=d.turno)
             self.session.add(d_model)
 
-        self.session.commit()
-        return self.find_atribuicao_by_id(atribuicao.id)  # type: ignore
+        await self.session.commit()
+        return await self.find_atribuicao_by_id(atribuicao.id)
 
-    def find_atribuicao_by_id(self, atribuicao_id: int) -> Optional[AtribuicaoProfessorDisciplina]:
-        m = self.session.query(AtribuicaoModel).filter(AtribuicaoModel.id == atribuicao_id).first()
+    async def find_atribuicao_by_id(self, atribuicao_id: int) -> Optional[AtribuicaoProfessorDisciplina]:
+        result = await self.session.execute(
+            select(AtribuicaoModel).filter(AtribuicaoModel.id == atribuicao_id)
+        )
+        m = result.scalar_one_or_none()
         if m:
+            result2 = await self.session.execute(
+                select(DiaLetivoModel).filter(DiaLetivoModel.atribuicao_id == atribuicao_id)
+            )
+            dias_rows = result2.scalars().all()
             dias = [
                 DiaLetivoDisciplina(id=d.id, atribuicao_id=d.atribuicao_id, data=d.data, turno=d.turno)
-                for d in m.dias_letivos
+                for d in dias_rows
             ]
             return AtribuicaoProfessorDisciplina(
                 id=m.id, professor_id=m.professor_id, disciplina_id=m.disciplina_id,
@@ -287,75 +353,102 @@ class SQLAlchemyAtribuicaoRepository(IAtribuicaoRepository):
             )
         return None
 
-    def list_atribuicoes_by_periodo(self, periodo_letivo_id: int) -> List[AtribuicaoProfessorDisciplina]:
-        models = self.session.query(AtribuicaoModel).filter(AtribuicaoModel.periodo_letivo_id == periodo_letivo_id).all()
+    async def list_atribuicoes_by_periodo(self, periodo_letivo_id: int) -> List[AtribuicaoProfessorDisciplina]:
+        result = await self.session.execute(
+            select(AtribuicaoModel).filter(AtribuicaoModel.periodo_letivo_id == periodo_letivo_id).order_by(AtribuicaoModel.id)
+        )
+        models = result.scalars().all()
         res = []
         for m in models:
-            dias = [DiaLetivoDisciplina(id=d.id, atribuicao_id=d.atribuicao_id, data=d.data, turno=d.turno) for d in m.dias_letivos]
+            result2 = await self.session.execute(
+                select(DiaLetivoModel).filter(DiaLetivoModel.atribuicao_id == m.id)
+            )
+            dias_rows = result2.scalars().all()
             res.append(AtribuicaoProfessorDisciplina(
                 id=m.id, professor_id=m.professor_id, disciplina_id=m.disciplina_id,
-                periodo_letivo_id=m.periodo_letivo_id, horario=m.horario, dias_letivos=dias
+                periodo_letivo_id=m.periodo_letivo_id, horario=m.horario, dias_letivos=[
+                    DiaLetivoDisciplina(id=d.id, atribuicao_id=d.atribuicao_id, data=d.data, turno=d.turno)
+                    for d in dias_rows
+                ]
             ))
         return res
 
-    def list_atribuicoes_by_professor(self, professor_id: int) -> List[AtribuicaoProfessorDisciplina]:
-        models = self.session.query(AtribuicaoModel).filter(AtribuicaoModel.professor_id == professor_id).all()
+    async def list_atribuicoes_by_professor(self, professor_id: int) -> List[AtribuicaoProfessorDisciplina]:
+        result = await self.session.execute(
+            select(AtribuicaoModel).filter(AtribuicaoModel.professor_id == professor_id).order_by(AtribuicaoModel.id)
+        )
+        models = result.scalars().all()
         res = []
         for m in models:
-            dias = [DiaLetivoDisciplina(id=d.id, atribuicao_id=d.atribuicao_id, data=d.data, turno=d.turno) for d in m.dias_letivos]
+            result2 = await self.session.execute(
+                select(DiaLetivoModel).filter(DiaLetivoModel.atribuicao_id == m.id)
+            )
+            dias_rows = result2.scalars().all()
             res.append(AtribuicaoProfessorDisciplina(
                 id=m.id, professor_id=m.professor_id, disciplina_id=m.disciplina_id,
-                periodo_letivo_id=m.periodo_letivo_id, horario=m.horario, dias_letivos=dias
+                periodo_letivo_id=m.periodo_letivo_id, horario=m.horario, dias_letivos=[
+                    DiaLetivoDisciplina(id=d.id, atribuicao_id=d.atribuicao_id, data=d.data, turno=d.turno)
+                    for d in dias_rows
+                ]
             ))
         return res
 
-    def save_dia_letivo(self, dia: DiaLetivoDisciplina) -> DiaLetivoDisciplina:
+    async def save_dia_letivo(self, dia: DiaLetivoDisciplina) -> DiaLetivoDisciplina:
         m = DiaLetivoModel(atribuicao_id=dia.atribuicao_id, data=dia.data, turno=dia.turno)
         self.session.add(m)
-        self.session.commit()
-        self.session.refresh(m)
+        await self.session.commit()
+        await self.session.refresh(m)
         dia.id = m.id
         return dia
 
-    def delete_dia_letivo(self, dia_id: int) -> bool:
-        m = self.session.query(DiaLetivoModel).filter(DiaLetivoModel.id == dia_id).first()
-        if m:
-            self.session.delete(m)
-            self.session.commit()
+    async def delete_dia_letivo(self, dia_id: int) -> bool:
+        result = await self.session.execute(
+            select(DiaLetivoModel).filter(DiaLetivoModel.id == dia_id)
+        )
+        model = result.scalar_one_or_none()
+        if model:
+            await self.session.delete(model)
+            await self.session.commit()
             return True
         return False
 
 
 class SQLAlchemyPeriodoLetivoRepository(IPeriodoLetivoRepository):
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    def save(self, periodo: PeriodoLetivo) -> PeriodoLetivo:
-        if periodo.id:
-            m = self.session.query(PeriodoLetivoModel).filter(PeriodoLetivoModel.id == periodo.id).first()
-            if m:
-                m.ano = periodo.ano
-                m.semestre = periodo.semestre
-                m.ativo = periodo.ativo
-                m.data_inicio = periodo.data_inicio
-                m.data_fim = periodo.data_fim
-                m.data_limite_entrega_plano = periodo.data_limite_entrega_plano
-                m.minutos_por_dia_letivo = periodo.minutos_por_dia_letivo
+    async def save(self, periodo: PeriodoLetivo) -> PeriodoLetivo:
+        result = await self.session.execute(
+            select(PeriodoLetivoModel).filter(PeriodoLetivoModel.id == periodo.id)
+        )
+        model = result.scalar_one_or_none()
+        if model:
+            model.ano = periodo.ano
+            model.semestre = periodo.semestre
+            model.ativo = periodo.ativo
+            model.data_inicio = periodo.data_inicio
+            model.data_fim = periodo.data_fim
+            model.data_limite_entrega_plano = periodo.data_limite_entrega_plano
+            model.minutos_por_dia_letivo = periodo.minutos_por_dia_letivo
         else:
-            m = PeriodoLetivoModel(
+            model = PeriodoLetivoModel(
                 ano=periodo.ano, semestre=periodo.semestre, ativo=periodo.ativo,
                 data_inicio=periodo.data_inicio, data_fim=periodo.data_fim,
                 data_limite_entrega_plano=periodo.data_limite_entrega_plano,
                 minutos_por_dia_letivo=periodo.minutos_por_dia_letivo
             )
-            self.session.add(m)
-        self.session.commit()
-        self.session.refresh(m)
-        periodo.id = m.id
+            self.session.add(model)
+
+        await self.session.commit()
+        await self.session.refresh(model)
+        periodo.id = model.id
         return periodo
 
-    def find_by_id(self, periodo_id: int) -> Optional[PeriodoLetivo]:
-        m = self.session.query(PeriodoLetivoModel).filter(PeriodoLetivoModel.id == periodo_id).first()
+    async def find_by_id(self, periodo_id: int) -> Optional[PeriodoLetivo]:
+        result = await self.session.execute(
+            select(PeriodoLetivoModel).filter(PeriodoLetivoModel.id == periodo_id)
+        )
+        m = result.scalar_one_or_none()
         if m:
             return PeriodoLetivo(
                 id=m.id, ano=m.ano, semestre=m.semestre, ativo=m.ativo,
@@ -365,8 +458,11 @@ class SQLAlchemyPeriodoLetivoRepository(IPeriodoLetivoRepository):
             )
         return None
 
-    def get_ativo(self) -> Optional[PeriodoLetivo]:
-        m = self.session.query(PeriodoLetivoModel).filter(PeriodoLetivoModel.ativo == True).first()
+    async def get_ativo(self) -> Optional[PeriodoLetivo]:
+        result = await self.session.execute(
+            select(PeriodoLetivoModel).filter(PeriodoLetivoModel.ativo == True)
+        )
+        m = result.scalar_one_or_none()
         if m:
             return PeriodoLetivo(
                 id=m.id, ano=m.ano, semestre=m.semestre, ativo=m.ativo,
@@ -376,13 +472,18 @@ class SQLAlchemyPeriodoLetivoRepository(IPeriodoLetivoRepository):
             )
         return None
 
-    def set_ativo(self, periodo_id: int) -> None:
-        self.session.query(PeriodoLetivoModel).update({PeriodoLetivoModel.ativo: False})
-        self.session.query(PeriodoLetivoModel).filter(PeriodoLetivoModel.id == periodo_id).update({PeriodoLetivoModel.ativo: True})
-        self.session.commit()
+    async def set_ativo(self, periodo_id: int) -> None:
+        await self.session.execute(
+            update(PeriodoLetivoModel).where(PeriodoLetivoModel.id == periodo_id).values(ativo=False)
+        )
+        await self.session.execute(
+            update(PeriodoLetivoModel).where(PeriodoLetivoModel.id == periodo_id).values(ativo=True)
+        )
+        await self.session.commit()
 
-    def list_all(self) -> List[PeriodoLetivo]:
-        models = self.session.query(PeriodoLetivoModel).all()
+    async def list_all(self) -> List[PeriodoLetivo]:
+        result = await self.session.execute(select(PeriodoLetivoModel).order_by(PeriodoLetivoModel.id))
+        models = result.scalars().all()
         return [
             PeriodoLetivo(
                 id=m.id, ano=m.ano, semestre=m.semestre, ativo=m.ativo,
@@ -394,32 +495,39 @@ class SQLAlchemyPeriodoLetivoRepository(IPeriodoLetivoRepository):
 
 
 class SQLAlchemyNotificationRepository(INotificationRepository):
-    def __init__(self, session: Session):
+    def __init__(self, session: AsyncSession):
         self.session = session
 
-    def save_preference(self, pref: NotificationPreference) -> NotificationPreference:
-        m = self.session.query(NotificationPreferenceModel).filter(NotificationPreferenceModel.usuario_id == pref.usuario_id).first()
-        if m:
-            m.canal_email = pref.canal_email
-            m.canal_telegram = pref.canal_telegram
-            m.chat_id_telegram = pref.chat_id_telegram
-            m.horario_preferido = pref.horario_preferido
+    async def save_preference(self, pref: NotificationPreference) -> NotificationPreference:
+        result = await self.session.execute(
+            select(NotificationPreferenceModel).filter(NotificationPreferenceModel.usuario_id == pref.usuario_id)
+        )
+        model = result.scalar_one_or_none()
+        if model:
+            model.canal_email = pref.canal_email
+            model.canal_telegram = pref.canal_telegram
+            model.chat_id_telegram = pref.chat_id_telegram
+            model.horario_preferido = pref.horario_preferido
         else:
-            m = NotificationPreferenceModel(
+            model = NotificationPreferenceModel(
                 usuario_id=pref.usuario_id,
                 canal_email=pref.canal_email,
                 canal_telegram=pref.canal_telegram,
                 chat_id_telegram=pref.chat_id_telegram,
                 horario_preferido=pref.horario_preferido
             )
-            self.session.add(m)
-        self.session.commit()
-        self.session.refresh(m)
-        pref.id = m.id
+            self.session.add(model)
+
+        await self.session.commit()
+        await self.session.refresh(model)
+        pref.id = model.id
         return pref
 
-    def find_preference_by_usuario_id(self, usuario_id: int) -> Optional[NotificationPreference]:
-        m = self.session.query(NotificationPreferenceModel).filter(NotificationPreferenceModel.usuario_id == usuario_id).first()
+    async def find_preference_by_usuario_id(self, usuario_id: int) -> Optional[NotificationPreference]:
+        result = await self.session.execute(
+            select(NotificationPreferenceModel).filter(NotificationPreferenceModel.usuario_id == usuario_id)
+        )
+        m = result.scalar_one_or_none()
         if m:
             return NotificationPreference(
                 id=m.id, usuario_id=m.usuario_id, canal_email=m.canal_email,
@@ -428,20 +536,23 @@ class SQLAlchemyNotificationRepository(INotificationRepository):
             )
         return None
 
-    def save_log(self, log: NotificationLog) -> NotificationLog:
-        m = NotificationLogModel(
+    async def save_log(self, log: NotificationLog) -> NotificationLog:
+        model = NotificationLogModel(
             usuario_id=log.usuario_id, atribuicao_id=log.atribuicao_id,
             canal=log.canal, status=log.status, mensagem_erro=log.mensagem_erro
         )
-        self.session.add(m)
-        self.session.commit()
-        self.session.refresh(m)
-        log.id = m.id
+        self.session.add(model)
+        await self.session.commit()
+        await self.session.refresh(model)
+        log.id = model.id
         log.criado_em = m.criado_em
         return log
 
-    def list_logs_by_usuario(self, usuario_id: int) -> List[NotificationLog]:
-        models = self.session.query(NotificationLogModel).filter(NotificationLogModel.usuario_id == usuario_id).all()
+    async def list_logs_by_usuario(self, usuario_id: int) -> List[NotificationLog]:
+        result = await self.session.execute(
+            select(NotificationLogModel).filter(NotificationLogModel.usuario_id == usuario_id).order_by(NotificationLogModel.criado_em)
+        )
+        models = result.scalars().all()
         return [
             NotificationLog(
                 id=m.id, usuario_id=m.usuario_id, atribuicao_id=m.atribuicao_id,

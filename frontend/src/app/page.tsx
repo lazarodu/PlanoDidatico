@@ -1,156 +1,126 @@
-'use client';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/shared/components/ui/Card';
+import { Badge } from '@/shared/components/ui/Badge';
+import { Button } from '@/shared/components/ui/Button';
+import Link from 'next/link';
+import { BookOpen, FileEdit, Clock, CheckCircle, ShieldAlert, Sparkles } from 'lucide-react';
+import { PlanStatus } from '@/domain/entities/DidacticPlan';
 
-import React, { useState } from 'react';
-
-export default function Home() {
-  const [role, setRole] = useState<'professor' | 'coordinator' | 'admin'>('professor');
-  const [msg, setMsg] = useState('');
-
-  const [profName, setProfName] = useState('Prof. Ana Silva');
-  const [atividade, setAtividade] = useState('Atividades Aritméticas e Provas Práticas');
-  const [cronograma, setCronograma] = useState('Semana 1: Intro, Semana 2: DDD');
-  const [periodoAno, setPeriodoAno] = useState('2026');
-  const [periodoSemestre, setPeriodoSemestre] = useState('1');
-  const [dataLimite, setDataLimite] = useState('2026-03-01');
-  const [fieldName, setFieldName] = useState('');
-  const [fieldType, setFieldType] = useState('textarea');
-
-  const handleProfSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setMsg('Plano didático submetido com sucesso! PDF pronto para download.');
-  };
-
-  const handleCoordSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setMsg(`Período Letivo ${periodoAno}.${periodoSemestre} definido com limite em ${dataLimite}.`);
-  };
-
-  const handleAdminSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setMsg(`Novo campo configurável '${fieldName}' (${fieldType}) criado com sucesso.`);
-    setFieldName('');
-  };
+// Demonstração de Server-Side Rendering (SSR) e metadados com Server Component
+export default async function HomePage() {
+  const mockPlanos = [
+    {
+      id: 'plan-pw-2026-1',
+      disciplina: 'Laboratório de Programação Web',
+      codigo: 'DCC-084',
+      professor: 'Prof. Dr. Lazaro',
+      periodo: '2026/1',
+      status: PlanStatus.RASCUNHO,
+      cargaHoraria: '60h',
+      ultimaEdicao: 'Hoje às 14:20',
+    },
+    {
+      id: 'plan-es-2026-1',
+      disciplina: 'Engenharia de Software',
+      codigo: 'DCC-042',
+      professor: 'Profª. Maria Silva',
+      periodo: '2026/1',
+      status: PlanStatus.SUBMETIDO,
+      cargaHoraria: '60h',
+      ultimaEdicao: 'Ontem',
+    },
+    {
+      id: 'plan-bd-2026-1',
+      disciplina: 'Banco de Dados',
+      codigo: 'DCC-015',
+      professor: 'Prof. João Santos',
+      periodo: '2026/1',
+      status: PlanStatus.APROVADO,
+      cargaHoraria: '90h',
+      ultimaEdicao: '28/10/2026',
+    },
+  ];
 
   return (
-    <div style={{ fontFamily: 'sans-serif', margin: 0, padding: 0, backgroundColor: '#f4f6f8', minHeight: '100vh' }}>
-      <header style={{ backgroundColor: '#003366', color: '#ffffff', padding: '1rem 2rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem' }}>CEFET-MG — Sistema de Planos Didáticos</h1>
-        <p style={{ margin: '0.25rem 0 0 0', opacity: 0.8, fontSize: '0.9rem' }}>
-          Gestão descentralizada por perfil (Professor, Coordenador, Admin)
-        </p>
-      </header>
-
-      <nav style={{ display: 'flex', gap: '1rem', padding: '1rem 2rem', backgroundColor: '#e2e8f0' }}>
-        <button
-          onClick={() => { setRole('professor'); setMsg(''); }}
-          style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', backgroundColor: role === 'professor' ? '#003366' : '#cbd5e1', color: role === 'professor' ? '#fff' : '#000', cursor: 'pointer' }}
-        >
-          Visão Professor
-        </button>
-        <button
-          onClick={() => { setRole('coordinator'); setMsg(''); }}
-          style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', backgroundColor: role === 'coordinator' ? '#003366' : '#cbd5e1', color: role === 'coordinator' ? '#fff' : '#000', cursor: 'pointer' }}
-        >
-          Visão Coordenador
-        </button>
-        <button
-          onClick={() => { setRole('admin'); setMsg(''); }}
-          style={{ padding: '0.5rem 1rem', borderRadius: '4px', border: 'none', backgroundColor: role === 'admin' ? '#003366' : '#cbd5e1', color: role === 'admin' ? '#fff' : '#000', cursor: 'pointer' }}
-        >
-          Visão Administrador
-        </button>
-      </nav>
-
-      <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-        {msg && (
-          <div style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '1rem', borderRadius: '6px', marginBottom: '1.5rem' }}>
-            {msg}
+    <div className="space-y-8">
+      {/* Hero / Banner Informativo */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-900 p-8 text-white shadow-xl">
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs font-semibold backdrop-blur-md mb-4 text-blue-100 border border-white/15">
+            <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
+            Next.js 16 + Clean Architecture + DDD + Offline-First
           </div>
-        )}
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl text-white">
+            Planos Didáticos Semestrais
+          </h1>
+          <p className="mt-3 text-sm sm:text-base text-blue-100 leading-relaxed">
+            Gestão e acompanhamento institucional dos planos de ensino do CEFET-MG. Edite campos configuráveis em tempo real com garantia de validação e persistência offline.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/planos/plan-pw-2026-1">
+              <Button className="bg-white text-blue-700 hover:bg-blue-50 font-semibold shadow-md">
+                <FileEdit className="w-4 h-4 mr-1.5" />
+                Preencher Plano Didático (Demo)
+              </Button>
+            </Link>
+            <Link href="/atribuicoes">
+              <Button variant="outline" className="text-white border-white/30 bg-white/10 hover:bg-white/20">
+                Verificador de Carga (RF11)
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
 
-        {role === 'professor' && (
-          <section style={{ backgroundColor: '#ffffff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h2>Submeter Plano Didático (UC1 / RF01 / RF03)</h2>
-            <form onSubmit={handleProfSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Docente Responsável (Campo Fixo)</label>
-                <input type="text" value={profName} onChange={(e) => setProfName(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Atividades Avaliativas (Campo Variável)</label>
-                <textarea rows={3} value={atividade} onChange={(e) => setAtividade(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Cronograma Detalhado (Campo Variável)</label>
-                <textarea rows={3} value={cronograma} onChange={(e) => setCronograma(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button type="submit" style={{ backgroundColor: '#003366', color: '#ffffff', padding: '0.75rem 1.5rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                  Submeter Plano
-                </button>
-                <button type="button" onClick={() => window.open('/api/plans/1/pdf', '_blank')} style={{ backgroundColor: '#2563eb', color: '#ffffff', padding: '0.75rem 1.5rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                  Gerar PDF
-                </button>
-              </div>
-            </form>
-          </section>
-        )}
+      {/* Grid de Planos Didáticos */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">Planos Didáticos do Período 2026/1</h2>
+            <p className="text-xs text-slate-500">Monitoramento de submissão por disciplina e docente</p>
+          </div>
+        </div>
 
-        {role === 'coordinator' && (
-          <section style={{ backgroundColor: '#ffffff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h2>Gestão do Período e Professores (UC11 / UC12 / UC13 / RF07 / RF09 / RF11)</h2>
-            <form onSubmit={handleCoordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-              <h3>Definir Período Letivo</h3>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Ano</label>
-                  <input type="number" value={periodoAno} onChange={(e) => setPeriodoAno(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {mockPlanos.map((plano) => (
+            <Card key={plano.id} className="hover:border-blue-300 transition-all shadow-sm hover:shadow-md flex flex-col justify-between">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600">
+                    {plano.codigo}
+                  </span>
+                  <Badge status={plano.status} />
                 </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Semestre</label>
-                  <input type="number" value={periodoSemestre} onChange={(e) => setPeriodoSemestre(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+                <CardTitle className="text-base mt-2 font-bold text-slate-800 line-clamp-1">
+                  {plano.disciplina}
+                </CardTitle>
+                <CardDescription className="text-xs text-slate-500">
+                  {plano.professor}
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="py-2 text-xs text-slate-600 space-y-1.5">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                  <span className="text-slate-400">Carga Horária:</span>
+                  <span className="font-semibold text-slate-700">{plano.cargaHoraria}</span>
                 </div>
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Data Limite para Entrega do Plano</label>
-                <input type="date" value={dataLimite} onChange={(e) => setDataLimite(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }} />
-              </div>
-              <button type="submit" style={{ backgroundColor: '#003366', color: '#ffffff', padding: '0.75rem 1.5rem', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-start' }}>
-                Salvar Período Letivo
-              </button>
-            </form>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-slate-400">Última atualização:</span>
+                  <span className="text-slate-700">{plano.ultimaEdicao}</span>
+                </div>
+              </CardContent>
 
-            <div>
-              <h3>Importar Lista de Professores via CSV (RF07)</h3>
-              <input type="file" accept=".csv" onChange={() => setMsg('CSV importado! 5 novos professores cadastrados.')} style={{ marginBottom: '1rem' }} />
-            </div>
-          </section>
-        )}
-
-        {role === 'admin' && (
-          <section style={{ backgroundColor: '#ffffff', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-            <h2>Gerenciar Campos do Formulário e Canais (UC8 / UC16 / RF04 / RF12)</h2>
-            <form onSubmit={handleAdminSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Nome do Novo Campo</label>
-                <input type="text" value={fieldName} onChange={(e) => setFieldName(e.target.value)} placeholder="Ex: recursos_didaticos" required style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }} />
+              <div className="p-4 pt-2 border-t border-slate-100">
+                <Link href={`/planos/${plano.id}`} className="w-full">
+                  <Button variant="outline" size="sm" className="w-full justify-center">
+                    <FileEdit className="w-3.5 h-3.5 mr-1" />
+                    Abrir Plano Didático
+                  </Button>
+                </Link>
               </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '0.5rem' }}>Tipo do Campo</label>
-                <select value={fieldType} onChange={(e) => setFieldType(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}>
-                  <option value="textarea">Textarea (Texto Multilinha)</option>
-                  <option value="text">Input Text</option>
-                  <option value="date">Data</option>
-                  <option value="select">Seleção</option>
-                </select>
-              </div>
-              <button type="submit" style={{ backgroundColor: '#003366', color: '#ffffff', padding: '0.75rem 1.5rem', border: 'none', borderRadius: '4px', cursor: 'pointer', alignSelf: 'flex-start' }}>
-                Adicionar Campo
-              </button>
-            </form>
-          </section>
-        )}
-      </main>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
