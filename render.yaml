@@ -1,0 +1,67 @@
+# ==============================================================================
+# Render Blueprint - Backend (FastAPI) + PostgreSQL
+#
+# Como usar:
+#   1. No Render Dashboard, clique em "New" > "Blueprint".
+#   2. Conecte o repositório e selecione este arquivo (render.yaml).
+#   3. Preencha CORS_ORIGINS com a URL do frontend na Vercel.
+#
+# O deploy automático do Render fica DESLIGADO (autoDeployTrigger: off).
+# Quem dispara o deploy é o GitHub Actions, depois que os testes passam.
+#
+# Observações do plano gratuito:
+#   - O serviço web hiberna após 15 minutos sem tráfego.
+#   - O PostgreSQL gratuito expira 30 dias após a criação.
+#   - As portas SMTP 25/465/587 são bloqueadas em serviços gratuitos;
+#     use a API HTTP de e-mail (EMAIL_API_KEY) documentada em DEPLOY.md.
+# ==============================================================================
+
+databases:
+  - name: planos-didaticos-db
+    databaseName: planos_didaticos
+    user: planos
+    plan: free
+    region: oregon
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: planos-didaticos-api
+    runtime: docker
+    plan: free
+    region: oregon
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: "off"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: planos-didaticos-db
+          property: connectionString
+      - key: CORS_ORIGINS
+        sync: false
+      # E-mail via API HTTP (recomendado; o plano Free bloqueia SMTP).
+      # Configure no Dashboard do Render:
+      # - key: EMAIL_PROVIDER   # resend | brevo
+      #   sync: false
+      # - key: EMAIL_API_KEY
+      #   sync: false
+      # - key: EMAIL_FROM
+      #   sync: false
+      # - key: EMAIL_FROM_NAME
+      #   sync: false
+      # Fallback SMTP (bloqueado no plano Free do Render):
+      # - key: SMTP_HOST
+      #   sync: false
+      # - key: SMTP_PORT
+      #   sync: false
+      # - key: SMTP_USER
+      #   sync: false
+      # - key: SMTP_PASSWORD
+      #   sync: false
+      # - key: SMTP_FROM
+      #   sync: false
+      # - key: TELEGRAM_BOT_TOKEN
+      #   sync: false

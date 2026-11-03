@@ -16,7 +16,7 @@ class ConfigurarCanaisUseCase:
     def __init__(self, notification_repo: INotificationRepository):
         self.notification_repo = notification_repo
 
-    def execute(
+    async def execute(
         self,
         usuario_id: int,
         canal_email: bool = True,
@@ -24,7 +24,7 @@ class ConfigurarCanaisUseCase:
         chat_id_telegram: Optional[str] = None,
         horario_preferido: Optional[time] = None
     ) -> NotificationPreference:
-        existing = self.notification_repo.find_preference_by_usuario_id(usuario_id)
+        existing = await self.notification_repo.find_preference_by_usuario_id(usuario_id)
         if existing:
             pref = existing
             pref.canal_email = canal_email
@@ -40,7 +40,7 @@ class ConfigurarCanaisUseCase:
                 chat_id_telegram=chat_id_telegram,
                 horario_preferido=horario_preferido
             )
-        return self.notification_repo.save_preference(pref)
+        return await self.notification_repo.save_preference(pref)
 
 
 class DetectarNotificarAtrasosUseCase:
@@ -65,27 +65,27 @@ class DetectarNotificarAtrasosUseCase:
 
     async def execute(self, hoje: Optional[date] = None) -> List[NotificationLog]:
         hoje_ref = hoje or date.today()
-        periodo_ativo = self.periodo_repo.get_ativo()
+        periodo_ativo = await self.periodo_repo.get_ativo()
         if not periodo_ativo:
             return []
 
         if hoje_ref <= periodo_ativo.data_limite_entrega_plano:
             return []
 
-        atribuicoes = self.atribuicao_repo.list_atribuicoes_by_periodo(periodo_ativo.id)
+        atribuicoes = await self.atribuicao_repo.list_atribuicoes_by_periodo(periodo_ativo.id)
         logs_gerados = []
 
         for at in atribuicoes:
-            plan = self.plan_repo.find_by_professor_disciplina_periodo(at.professor_id, at.disciplina_id, periodo_ativo.id)
+            plan = await self.plan_repo.find_by_professor_disciplina_periodo(at.professor_id, at.disciplina_id, periodo_ativo.id)
             if plan and not plan.esta_pendente():
                 continue
 
-            usuario = self.user_repo.find_by_id(at.professor_id)
+            usuario = await self.user_repo.find_by_id(at.professor_id)
             if not usuario:
                 continue
 
-            pref = self.notification_repo.find_preference_by_usuario_id(usuario.id)
-            disciplina = self.atribuicao_repo.find_disciplina_by_id(at.disciplina_id)
+            pref = await self.notification_repo.find_preference_by_usuario_id(usuario.id)
+            disciplina = await self.atribuicao_repo.find_disciplina_by_id(at.disciplina_id)
             nome_disc = disciplina.nome if disciplina else "Disciplina"
 
             msg = (
@@ -105,7 +105,7 @@ class DetectarNotificarAtrasosUseCase:
                     mensagem_erro="Nenhum canal ativo configurado",
                     criado_em=datetime.now()
                 )
-                logs_gerados.append(self.notification_repo.save_log(log))
+                logs_gerados.append(await self.notification_repo.save_log(log))
                 continue
 
             if pref.canal_email and self.email_notifier:
@@ -126,7 +126,7 @@ class DetectarNotificarAtrasosUseCase:
                     mensagem_erro=err,
                     criado_em=datetime.now()
                 )
-                logs_gerados.append(self.notification_repo.save_log(log))
+                logs_gerados.append(await self.notification_repo.save_log(log))
 
             if pref.canal_telegram and pref.chat_id_telegram and self.telegram_notifier:
                 try:
@@ -146,6 +146,6 @@ class DetectarNotificarAtrasosUseCase:
                     mensagem_erro=err,
                     criado_em=datetime.now()
                 )
-                logs_gerados.append(self.notification_repo.save_log(log))
+                logs_gerados.append(await self.notification_repo.save_log(log))
 
         return logs_gerados

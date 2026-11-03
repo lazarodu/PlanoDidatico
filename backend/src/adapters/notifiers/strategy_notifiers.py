@@ -49,6 +49,84 @@ class EmailSmtpNotifier(INotifier):
             return False
 
 
+class EmailApiNotifier(INotifier):
+    """Notificador por API HTTP (Resend/Brevo).
+
+    Usado em ambientes que bloqueiam as portas SMTP, como o plano Free do
+    Render. Escolha o provedor com ``EMAIL_PROVIDER`` e informe a chave em
+    ``EMAIL_API_KEY``. Sem chave, o envio é simulado (útil no desenvolvimento).
+    """
+
+    RESEND_URL = "https://api.resend.com/emails"
+    BREVO_URL = "https://api.brevo.com/v3/smtp/email"
+
+    def __init__(
+        self,
+        provider: Optional[str] = None,
+        api_key: Optional[str] = None,
+        from_addr: Optional[str] = None,
+        from_name: Optional[str] = None,
+        client: Optional[httpx.AsyncClient] = None,
+    ):
+        self.provider = (provider or os.getenv("EMAIL_PROVIDER", "resend")).strip().lower()
+        self.api_key = api_key if api_key is not None else os.getenv("EMAIL_API_KEY", "")
+        self.from_addr = from_addr or os.getenv("EMAIL_FROM", "noreply@cefet.br")
+        self.from_name = from_name or os.getenv("EMAIL_FROM_NAME", "Planos Didáticos CEFET-MG")
+        self.client = client
+
+    async def enviar(self, destinatario: str, mensagem: str, titulo: Optional[str] = None) -> bool:
+        subject = titulo or "Notificação - CEFET-MG"
+        if not self.api_key:
+            print(f"[EmailApiNotifier SIMULATED] To: {destinatario} | Subject: {subject} | Body: {mensagem}")
+            return True
+
+        if self.provider == "resend":
+            url = self.RESEND_URL
+            headers = {"Authorization": f"Bearer {self.api_key}"}
+            payload = {
+                "from": f"{self.from_name} <{self.from_addr}>" if self.from_name else self.from_addr,
+                "to": [destinatario],
+                "subject": subject,
+                "text": mensagem,
+            }
+        elif self.provider == "brevo":
+            url = self.BREVO_URL
+            headers = {"api-key": self.api_key}
+            payload = {
+                "sender": {"name": self.from_name, "email": self.from_addr},
+                "to": [{"email": destinatario}],
+                "subject": subject,
+                "textContent": mensagem,
+            }
+        else:
+            print(f"[EmailApiNotifier Error] Provedor desconhecido: {self.provider}")
+            return False
+
+        client = self.client or httpx.AsyncClient(timeout=10.0)
+        try:
+            response = await client.post(url, headers=headers, json=payload)
+            if response.status_code in (200, 201, 202):
+                return True
+            print(
+                f"[EmailApiNotifier Error] {self.provider} HTTP "
+                f"{response.status_code}: {response.text[:500]}"
+            )
+            return False
+        except Exception as e:
+            print(f"[EmailApiNotifier Error] {e}")
+            return False
+        finally:
+            if self.client is None:
+                await client.aclose()
+
+
+def build_email_notifier() -> INotifier:
+    """Usa a API HTTP quando configurada; caso contrário, mantém o SMTP."""
+    if os.getenv("EMAIL_API_KEY", "").strip():
+        return EmailApiNotifier()
+    return EmailSmtpNotifier()
+
+
 class TelegramNotifier(INotifier):
     """Telegram Notifier Adapter (httpx -> api.telegram.org) for RF12"""
     def __init__(self, bot_token: Optional[str] = None):

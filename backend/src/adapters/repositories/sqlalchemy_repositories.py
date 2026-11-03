@@ -116,7 +116,7 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
                 model.data_entrega = plan.data_entrega
                 model.campos = plan.campos
         else:
-            m = DidacticPlanModel(
+            model = DidacticPlanModel(
                 professor_id=plan.professor_id,
                 disciplina_id=plan.disciplina_id,
                 periodo_letivo_id=plan.periodo_letivo_id,
@@ -124,7 +124,7 @@ class SQLAlchemyDidacticPlanRepository(IDidacticPlanRepository):
                 data_entrega=plan.data_entrega,
                 campos=plan.campos
             )
-            self.session.add(m)
+            self.session.add(model)
 
         await self.session.commit()
         await self.session.refresh(model)

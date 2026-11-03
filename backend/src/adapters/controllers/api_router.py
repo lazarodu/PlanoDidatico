@@ -12,7 +12,7 @@ from src.adapters.repositories.sqlalchemy_repositories import (
     SQLAlchemyPeriodoLetivoRepository,
     SQLAlchemyNotificationRepository
 )
-from src.adapters.notifiers.strategy_notifiers import EmailSmtpNotifier, TelegramNotifier
+from src.adapters.notifiers.strategy_notifiers import TelegramNotifier, build_email_notifier
 from src.adapters.pdf_generator import PDFGeneratorAdapter
 from src.adapters.controllers.dtos import (
     UserCreateDTO, UserResponseDTO,
@@ -230,7 +230,7 @@ async def trigger_check_delays(db: AsyncSession = Depends(get_db)):
     user_repo = SQLAlchemyUserRepository(db)
     notif_repo = SQLAlchemyNotificationRepository(db)
 
-    email_notifier = EmailSmtpNotifier()
+    email_notifier = build_email_notifier()
     telegram_notifier = TelegramNotifier()
 
     uc = DetectarNotificarAtrasosUseCase(
