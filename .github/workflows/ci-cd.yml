@@ -142,9 +142,6 @@ jobs:
     if: github.ref == 'refs/heads/main'
     environment:
       name: production
-    defaults:
-      run:
-        working-directory: frontend
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
